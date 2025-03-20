@@ -1,5 +1,6 @@
+import dht
 import machine
-import utime
+import time
 from machine import I2C, Pin
 from lcd_api import LcdApi
 from pico_i2c_lcd import I2cLcd
@@ -11,110 +12,41 @@ I2C_NUM_COLS = 16
 
 i2c = I2C(0, sda=machine.Pin(0), scl=machine.Pin(1), freq=400000)
 lcd = I2cLcd(i2c, I2C_ADDR, I2C_NUM_ROWS, I2C_NUM_COLS)
-button = machine.Pin(2,machine.Pin.IN,machine.Pin.PULL_UP)
 
+tlacitko = machine.Pin(3, machine.Pin.IN, machine.Pin.PULL_DOWN)
 
-def greeting():
-    
-    lcd.clear()
-    lcd.move_to(5,0)
-    lcd.putstr("Vojtech")
-    lcd.move_to(5,1)
-    lcd.putstr("Bezdek")
-    lcd.move_to(11,1)
-    lcd.putchar(chr(2))
-    lcd.putchar(chr(3))
-    utime.sleep(2)
+meric = machine.Pin(2)
 
-    
+sensor = dht.DHT11(meric)
 
+stav= 0
+minulý_stav = 0  
 
-def customcharacter():
-    
-  #character      
-  lcd.custom_char(0, bytearray([
-  0x0E,
-  0x0E,
-  0x04,
-  0x1F,
-  0x04,
-  0x0E,
-  0x0A,
-  0x0A
-        
-        ]))
-  
-    #character2      
-  lcd.custom_char(1, bytearray([
-    0x1F,
-  0x15,
-  0x1F,
-  0x1F,
-  0x1F,
-  0x0A,
-  0x0A,
-  0x1B
-        
-        ]))
-  
-  
-  
-  
-  #smiley
-  lcd.custom_char(2, bytearray([
-  0x00,
-  0x00,
-  0x0A,
-  0x00,
-  0x15,
-  0x11,
-  0x0E,
-  0x00
-        
-        ]))
-  
-  #heart
-  lcd.custom_char(3, bytearray([
-   0x00,
-  0x00,
-  0x0A,
-  0x15,
-  0x11,
-  0x0A,
-  0x04,
-  0x00
-        
-        ]))
-  
-      #note
-  lcd.custom_char(4, bytearray([
-   0x01,
-  0x03,
-  0x05,
-  0x09,
-  0x09,
-  0x0B,
-  0x1B,
-  0x18
-        
-        ]))
-    #celcius
-  lcd.custom_char(5, bytearray([
-  0x07,
-  0x05,
-  0x07,
-  0x00,
-  0x00,
-  0x00,
-  0x00,
-  0x00
-        
-        ]))
-  
-
-    
 while True:
-    if button.value() == 1:
-        greeting()
-    if button.value() == 0:
+    
+    aktuální_stav = tlacitko.value()
+ 
+    if aktuální_stav == 1 and minulý_stav == 0:
+        stav = (stav + 1) % 2
+        print(f"Stav: {stav}")
+    
+    sensor.measure() 
+    temp = sensor.temperature()
+    hum = sensor.humidity()
+    temp_f = temp * (9/5) + 32.0
+    
+
+    if stav == 0:
         lcd.clear()
+        lcd.move_to(5,0)
+        lcd.putstr('Teplota:')
+        lcd.move_to(5,1)
+        lcd.putstr('%3.1f C' %temp)
+    if stav == 1:
+        lcd.clear()
+        lcd.move_to(5,0)
+        lcd.putstr('Vlhkost:')
+        lcd.move_to(5,1)
+        lcd.putstr('%3.1f %%' %hum)
+    minulý_stav = aktuální_stav
+    time.sleep(0.1)
